@@ -1,24 +1,22 @@
 fun main() {
     class Assignment() {
-        var aLow = 0
-        var aHigh = 0
-        var bLow = 0
-        var bHigh = 0
+        var range1 = IntRange(0, 0)
+        var range2 = IntRange(0, 0)
 
         constructor(line: String) : this() {
-            val d = """(\d+)-(\d+),(\d+)-(\d+)""".toRegex().find(line)!!.destructured
-            aLow = d.component1().toInt()
-            aHigh = d.component2().toInt()
-            bLow = d.component3().toInt()
-            bHigh = d.component4().toInt()
+            val (a, b, c, d) = """(\d+)-(\d+),(\d+)-(\d+)""".toRegex().find(line)!!.destructured.toList()
+                .map { it.toInt() }
+            range1 = IntRange(a, b)
+            range2 = IntRange(c, d)
         }
 
         fun containsStrictOverlap(): Boolean {
-            return aLow <= bLow && aHigh >= bHigh || bLow <= aLow && bHigh >= aHigh
+            return range1.intersect(range2).size == range2.count { true } ||
+                    range2.intersect(range1).size == range1.count { true }
         }
 
         fun containsAnyOverlap(): Boolean {
-            return bLow >= aLow && bLow <= aHigh || bLow <= aLow && bHigh >= aLow
+            return range1.intersect(range2).isNotEmpty()
         }
     }
 
