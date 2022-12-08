@@ -1,46 +1,34 @@
-typealias File = Triple<Dir, String, Int>
+const val MAX_SIZE = 70000000
+const val FREE_SIZE = 30000000
 
-class Dir(private var name: String, var parent:Dir?) {
+data class File(val dir:Dir, val name:String, val size:Int)
+
+class Dir(var name: String, var parent: Dir?) {
     //name->size
     var files = mutableMapOf<String, File>()
     //name->Dir
     var dirs = mutableMapOf<String, Dir>()
 
-    fun calcTotals(maxSize: Int, matchingDirs: MutableList<Pair<Int, Dir>>): Int {
-        var total = files.values.sumOf(File::third)
+    fun calcTotals(sizePredicate: (Int) -> Boolean, matchingDirs: MutableList<Pair<Int, Dir>>): Int {
+        var total = files.values.sumOf(File::size)
         if (dirs.isEmpty()) {
-            if (total <= maxSize) {
-                if (total == 0) {
-                    println("Skipping empty directory: $name ")
-                } else {
-                    println("MATCH: Added $name to result in $total")
-                    matchingDirs.add(Pair(total, this))
-                }
-            }
+            if (sizePredicate(total)) matchingDirs.add(Pair(total, this))
             return total
         }
         for ((_, d) in dirs) {
-            println("Traversing into child ${d.name} from $name")
-            val c = d.calcTotals(maxSize, matchingDirs)
-            total += c
-            println("Added $c to running total for $name to result in $total")
+            total += d.calcTotals(sizePredicate, matchingDirs)
         }
-
-        if (total <= maxSize) {
-            println("MATCH: Including local files of size $total for $name to get $total")
+        if (sizePredicate(total)) {
             matchingDirs.add((Pair(total, this)))
-        } else {
-            println("Excluding local $name based on total of $total")
         }
-
         return total
     }
 }
 
 fun main() {
 
-    fun part1(input: List<String>): Int {
-        val root = Dir("/",null)
+    fun parseInput(input: List<String>): Dir {
+        val root = Dir("/", null)
         var currDir = root
         //read in files
         input.forEach { line ->
@@ -49,47 +37,55 @@ fun main() {
             if (split.first() == "$") {
                 // we don't care about "ls" and are just assuming if we cant find the dir, then its /
                 if (split[1] == "cd") {
-                    if (split.last() == "..") {
-                        currDir= currDir.parent!!
+                    currDir = if (split.last() == "..") {
+                        currDir.parent!!
                     } else {
-                        currDir = currDir.dirs.getOrDefault(split.last(), root)
+                        currDir.dirs.getOrDefault(split.last(), root)
                     }
                 }
             } else if (split.first() == "dir") {
                 //dir <name>    create new dir
-                currDir.dirs.putIfAbsent(split.last(), Dir(split.last(),currDir))
+                currDir.dirs.putIfAbsent(split.last(), Dir(split.last(), currDir))
             } else {
                 //\d <name>     create new file of size \d
-                if (currDir.files.containsKey(split.last())) {
-                    var existing = currDir.files.get(split.last())
-                    if (existing!!.third != split.first().toInt()) {
-                        throw IllegalStateException("Trying to add a file that already exists and got a different size")
-                    }
-                }
-                //currDir.files.putIfAbsent(split.last(), File(currDir, split.last(), split.first().toInt()))
-                currDir.files.put(split.last(), File(currDir, split.last(), split.first().toInt()))
+                currDir.files.putIfAbsent(split.last(), File(currDir, split.last(), split.first().toInt()))
             }
         }
+        return root
+    }
 
-//        val matchesTest = mutableListOf<Pair<Int, Dir>>()
-//        println("TOTAL: "+root.calcTotals(Int.MAX_VALUE,matchesTest)+"\n\n")
+    fun part1(input: List<String>): Int {
+        val root = parseInput(input)
 
         val matches = mutableListOf<Pair<Int, Dir>>()
-        root.calcTotals(100000, matches)
+        root.calcTotals({ size -> size <= 100000 }, matches)
         return matches.sumOf { it.first }
     }
 
     fun part2(input: List<String>): Int {
-        return 0
+        val root = parseInput(input)
+
+        val totalSizes = mutableListOf<Pair<Int, Dir>>()
+        val freeSpace = MAX_SIZE -  root.calcTotals({ true }, totalSizes)
+        val toDelete=FREE_SIZE-freeSpace
+
+        val candidates = mutableListOf<Pair<Int, Dir>>()
+        root.calcTotals({ size -> size >= toDelete }, candidates)
+
+        return candidates.minByOrNull { it.first }!!.first
     }
 
-    // test if implementation meets criteria from the description, like:
     val testInput = readInput("Day07_test")
     check(part1(testInput) == 95437)
-    //check(part2(testInput) == ?)
+    check(part2(testInput) == 24933642)
 
     val input = readInput("Day07")
-    println()
-    println(part1(input))
-    println(part2(input))
+
+    val part1 = part1(input)
+    println(part1)
+    check(part1 == 1454188)
+
+    val part2 = part2(input)
+    println(part2)
+    check(part2==4183246)
 }
