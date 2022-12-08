@@ -1,5 +1,5 @@
-const val MAX_SIZE = 70000000
-const val FREE_SIZE = 30000000
+const val MAX_SIZE =  70_000_000
+const val FREE_SIZE = 30_000_000
 
 data class File(val dir:Dir, val name:String, val size:Int)
 
@@ -65,14 +65,13 @@ fun main() {
     fun part2(input: List<String>): Int {
         val root = parseInput(input)
 
-        val totalSizes = mutableListOf<Pair<Int, Dir>>()
-        val freeSpace = MAX_SIZE -  root.calcTotals({ true }, totalSizes)
+        val freeSpace = MAX_SIZE -  root.calcTotals({ true }, mutableListOf<Pair<Int, Dir>>())
         val toDelete=FREE_SIZE-freeSpace
 
         val candidates = mutableListOf<Pair<Int, Dir>>()
         root.calcTotals({ size -> size >= toDelete }, candidates)
 
-        return candidates.minByOrNull { it.first }!!.first
+        return candidates.minOf{ it.first }
     }
 
     val testInput = readInput("Day07_test")
