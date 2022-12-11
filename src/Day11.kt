@@ -2,13 +2,14 @@ import java.util.function.Predicate
 
 data class Throw(val toMonkey: Int, val item: Long)
 
-class Monkey(instructions: List<String>, var productOfDivisors: Long = 1L) {
+class Monkey(instructions: List<String>) {
     var items = mutableListOf<Long>()
     var operation: (Long) -> Long = { old -> old }
     var test: Predicate<Long> = Predicate { item -> true }
     var trueTestMonkeyIndex = -1
     var falseTestMonkeyIndex = -1
-    var inspectionCount = 0
+    var inspectionCount = 0L
+    var divisor = 1L
 
     init {
         check(instructions.size == 5)
@@ -27,7 +28,7 @@ class Monkey(instructions: List<String>, var productOfDivisors: Long = 1L) {
                 else -> throw IllegalStateException("Unsupported operation ${opsSplit[1]}")
             }
         }
-        val divisor = instructions[2].substringAfterLast(' ').toLong()
+        divisor = instructions[2].substringAfterLast(' ').toLong()
         //test 2
         test = Predicate { item ->
             //println("    comparing ${item} with divisor ${divisor}, returning ${item%divisor==0L}")
@@ -40,7 +41,7 @@ class Monkey(instructions: List<String>, var productOfDivisors: Long = 1L) {
         falseTestMonkeyIndex = instructions[4].substringAfterLast(' ').toInt()
     }
 
-    fun takeTurn(shouldDivide: Boolean): List<Throw> {
+    fun takeTurn(shouldDivide: Boolean, productOfDivisors: Long = 1L): List<Throw> {
         val throwList = mutableListOf<Throw>()
 
         // On a single monkey's turn, it inspects and throws
@@ -88,33 +89,26 @@ fun main() {
             }
         }
         //sort by inspection count take(2).multiply
-        return monkeys.sortedBy { it.inspectionCount }.takeLast(2).fold(1) { product, m -> product * m.inspectionCount }
+        return monkeys.sortedByDescending { it.inspectionCount }.let { it[0].inspectionCount * it[1].inspectionCount }
     }
 
     fun part2(input: List<String>): Long {
-        //hack out the divisors
-        var productOfDivisors = 1L
-        for (line in input) {
-            if (line.contains("divisible")) {
-                productOfDivisors = productOfDivisors * line.split(" ").last().toLong()
-            }
-        }
-
         val monkeys = mutableListOf<Monkey>()
         input.windowed(7, 7, true) {
-            monkeys += Monkey(it.subList(1, 6), productOfDivisors)
+            monkeys += Monkey(it.subList(1, 6))
         }
+        val productOfDivisors = monkeys.fold(1L) { result, m -> result * m.divisor }
 
         for (round in 1..10_000) {
             for (m in monkeys) {
                 //println("Monkey ")
-                m.takeTurn(false).forEach { t -> monkeys[t.toMonkey].items.add(t.item) }
+                m.takeTurn(false, productOfDivisors).forEach { t -> monkeys[t.toMonkey].items.add(t.item) }
                 //println()
                 //println("Monkey inspected ${m.inspectionCount} times")
             }
         }
         //sort by inspection count take(2).multiply
-        return monkeys.sortedBy { it.inspectionCount }.takeLast(2).fold(1) { product, m -> product * m.inspectionCount }
+        return monkeys.sortedByDescending { it.inspectionCount }.let { it[0].inspectionCount * it[1].inspectionCount }
     }
 
     val testInput = readInput("Day11_test")
@@ -131,5 +125,5 @@ fun main() {
 
     val part2 = part2(input)
     println(part2)
-    check(part2==11614682178)
+    check(part2 == 11614682178)
 }
