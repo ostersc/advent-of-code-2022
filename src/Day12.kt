@@ -3,28 +3,18 @@ fun main() {
     //so this was clearly a dijkstra's problem and I didn't feel like reimplementing that, so grabbed the
     // first basic kotlin impl I found of that and copy/pasted just simplifying some syntax
     // https://www.atomiccommits.io/dijkstras-algorithm-in-kotlin
-    fun <T> List<Pair<T, T>>.getUniqueValuesFromPairs(): Set<T> = this
-        .map { (a, b) -> listOf(a, b) }
-        .flatten()
-        .toSet()
+    fun <T> List<Pair<T, T>>.getUniqueValuesFromPairs(): Set<T> = this.map { (a, b) -> listOf(a, b) }.flatten().toSet()
 
-    fun <T> List<Pair<T, T>>.getUniqueValuesFromPairs(predicate: (T) -> Boolean): Set<T> = this
-        .map { (a, b) -> listOf(a, b) }
-        .flatten()
-        .filter(predicate)
-        .toSet()
+    fun <T> List<Pair<T, T>>.getUniqueValuesFromPairs(predicate: (T) -> Boolean): Set<T> =
+        this.map { (a, b) -> listOf(a, b) }.flatten().filter(predicate).toSet()
 
     data class Graph<T>(
-        val vertices: Set<T>,
-        val edges: Map<T, Set<T>>,
-        val weights: Map<Pair<T, T>, Int>
+        val vertices: Set<T>, val edges: Map<T, Set<T>>, val weights: Map<Pair<T, T>, Int>
     ) {
         constructor(weights: Map<Pair<T, T>, Int>) : this(
             vertices = weights.keys.toList().getUniqueValuesFromPairs(),
-            edges = weights.keys
-                .groupBy { it.first }
-                .mapValues { it.value.getUniqueValuesFromPairs { x -> x !== it.key } }
-                .withDefault { emptySet() },
+            edges = weights.keys.groupBy { it.first }
+                .mapValues { it.value.getUniqueValuesFromPairs { x -> x !== it.key } }.withDefault { emptySet() },
             weights = weights
         )
     }
@@ -45,10 +35,7 @@ fun main() {
 
         while (sub != graph.vertices) {
             // let v be the closest vertex that has not yet been visited
-            val v: T = delta
-                .filter { !sub.contains(it.key) }
-                .minBy { it.value }
-                .key
+            val v: T = delta.filter { !sub.contains(it.key) }.minBy { it.value }.key
 
             graph.edges.getValue(v).minus(sub).forEach { neighbor ->
                 val newPath = delta.getValue(v) + graph.weights.getValue(Pair(v, neighbor))
@@ -74,39 +61,44 @@ fun main() {
         return pathTo(start, end)
     }
 
-    fun part1(input: List<String>): Int {
-        //shouldCalculateCorrectShortestPaths()
+    data class Map(val startLocation:String, val endLocation:String, val lowestLocations:List<String>,val weights: MutableMap<Pair<String, String>, Int> )
+
+    fun parseMap(input: List<String>): Map {
         val weights = mutableMapOf<Pair<String, String>, Int>()
+        val lowestLocations= mutableListOf<String>()
         var startX = -1
         var startY = -1
 
         var endX = -1
         var endY = -1
-
         for (lineInd in 0..input.lastIndex) {
             for (charInd in 0..input[lineInd].lastIndex) {
-                //TODO: why is this needed? graph alg above didn't handle undefined self-paths
+                //why is this needed? graph alg above didn't handle undefined self-paths
                 weights[Pair("$charInd X $lineInd", "$charInd X $lineInd")] = 1
 
                 //build edges from c
                 var c = input[lineInd][charInd]
-                if (c == 'S') {
-                    startX = charInd
-                    startY = lineInd
-                    c = 'a'
-                } else if (c == 'E') {
-                    endX = charInd
-                    endY = lineInd
+                when (c) {
+                    'S' -> {
+                        startX = charInd
+                        startY = lineInd
+                        c = 'a'
+                    }
+                    'E' -> {
+                        endX = charInd
+                        endY = lineInd
+                    }
+                    'a' -> {
+                        lowestLocations+="$charInd X $lineInd"
+                    }
                 }
+
                 //up
                 if (lineInd - 1 >= 0) {
                     var other = input[lineInd - 1][charInd]
                     if (other == 'E') other = 'z'
                     if (other.code <= c.code + 1) {
                         weights[Pair("$charInd X $lineInd", "$charInd X ${lineInd - 1}")] = 1
-                    } else {
-                        //TODO: add path but max cost?
-                        //weights.put(Pair("$charInd X $lineInd", "$charInd X ${lineInd-1}"),Int.MAX_VALUE)
                     }
                 }
 
@@ -116,8 +108,6 @@ fun main() {
                     if (other == 'E') other = 'z'
                     if (other.code <= c.code + 1) {
                         weights[Pair("$charInd X $lineInd", "$charInd X ${lineInd + 1}")] = 1
-                    } else {
-                        //TODO: add path but max cost?
                     }
                 }
 
@@ -127,8 +117,6 @@ fun main() {
                     if (other == 'E') other = 'z'
                     if (other.code <= c.code + 1) {
                         weights[Pair("$charInd X $lineInd", "${charInd - 1} X $lineInd")] = 1
-                    } else {
-                        //TODO: add path but max cost?
                     }
                 }
 
@@ -138,8 +126,6 @@ fun main() {
                     if (other == 'E') other = 'z'
                     if (other.code <= c.code + 1) {
                         weights[Pair("$charInd X $lineInd", "${charInd + 1} X $lineInd")] = 1
-                    } else {
-                        //TODO: add path but max cost?
                     }
                 }
             }
@@ -148,28 +134,43 @@ fun main() {
         val start = "$startX X $startY"
         val end = "$endX X $endY"
 
-        val path = shortestPath(dijkstra(Graph(weights), start), start, end)
+        return Map(start, end, lowestLocations, weights)
+
+    }
+
+    fun part1(input: List<String>): Int {
+        val map= parseMap(input)
+        val path = shortestPath(dijkstra(Graph(map.weights), map.startLocation), map.startLocation, map.endLocation)
 
         //want the steps in the path, not counting the start
-        return path.size - 1
+        return path.size-1
     }
 
     fun part2(input: List<String>): Int {
+        val map= parseMap(input)
+        var shortestDistance=Int.MAX_VALUE
 
-        return input.size
+        for(potentialStart in map.lowestLocations){
+
+            val shortestPathTree = dijkstra(Graph(map.weights), potentialStart)
+            val path = shortestPath(shortestPathTree, potentialStart, map.endLocation)
+            if(path.size-1<=shortestDistance) shortestDistance=path.size-1
+        }
+
+        return shortestDistance
     }
 
     val testInput = readInput("Day12_test")
     var testResult = part1(testInput)
     check(testResult == 31)
     testResult = part2(testInput)
-    //check(testResult == ?)
+    check(testResult == 29)
 
     val input = readInput("Day12")
 
     val part1 = part1(input)
     println(part1)
-    //check(part1 == ??)
+    check(part1 == 484)
 
     val part2 = part2(input)
     println(part2)
