@@ -58,7 +58,16 @@ fun main() {
     }
 
     fun part2(input: List<String>): Int {
-        return input.size
+        val packets = input.filter { it.isNotBlank() }.map { Packet.of(it) }.toMutableList()
+        val ducePacket=Packet.of("[[2]]")
+        val sixerPacket=Packet.of("[[6]]")
+
+        packets+=ducePacket
+        packets+=sixerPacket
+
+        packets.sort()
+
+        return (packets.indexOf(ducePacket)+1)* (packets.indexOf(sixerPacket)+1)
     }
 
     val testInput = readInput("Day13_test")
@@ -73,5 +82,5 @@ fun main() {
 
     val part2 = part2(input)
     println(part2)
-    //check(part2==?)
+    check(part2==19261)
 }
