@@ -1,7 +1,17 @@
 import kotlin.math.sign
 
 enum class ContentType { Air, Rock, Sand, Hole }
-data class Point(var x: Int, var y: Int)
+data class Point(var x: Int, var y: Int){
+    fun down(): Point{
+        return this.copy(y=y+1)
+    }
+    fun diagLeft(): Point{
+        return this.copy(x=x-1,y=y+1)
+    }
+    fun diagRigth(): Point{
+        return this.copy(x=x+1,y=y+1)
+    }
+}
 
 class CaveGrid(var hole: Point = Point(500, 0), var contents: MutableMap<Point, ContentType>) {
     var minX = contents.keys.minOf { p -> p.x }
@@ -36,6 +46,29 @@ class CaveGrid(var hole: Point = Point(500, 0), var contents: MutableMap<Point, 
             result += "\n"
         }
         return result
+    }
+
+    fun dropSand(): Boolean {
+        var s = hole.copy()
+
+        while (!isInVoid(s)) {
+            if(contents.getOrDefault(s.down(), ContentType.Air)==ContentType.Air){
+                s=s.down()
+            }else if(contents.getOrDefault(s.diagLeft(), ContentType.Air)==ContentType.Air){
+                s=s.diagLeft()
+            }else if (contents.getOrDefault(s.diagRigth(), ContentType.Air)==ContentType.Air){
+                s=s.diagRigth()
+            }else{
+                break
+            }
+        }
+
+        if(!isInVoid(s)) {
+            contents.put(s, ContentType.Sand)
+            return true
+        }
+
+        return false
     }
 
     companion object {
@@ -73,8 +106,10 @@ class CaveGrid(var hole: Point = Point(500, 0), var contents: MutableMap<Point, 
 fun main() {
     fun part1(input: List<String>): Int {
         val cave = CaveGrid.of(input)
-        println(cave)
-        return input.size
+        while (cave.dropSand()) {
+            //println(cave)
+        }
+        return cave.contents.filterValues { it.equals(ContentType.Sand) }.size
     }
 
     fun part2(input: List<String>): Int {
@@ -89,7 +124,7 @@ fun main() {
 
     val part1 = part1(input)
     println(part1)
-    //check(part1 == ???)
+    check(part1 == 1406)
 
     val part2 = part2(input)
     println(part2)
